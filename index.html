@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Major Cineplex (MAJOR TB) | Deep-Dive Research Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<style>
+/* ===== RESET & BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e17;--surface:#111827;--card:#1a2236;--border:#2a3553;
+  --accent:#f59e0b;--accent2:#3b82f6;--accent3:#10b981;--red:#ef4444;
+  --text:#e2e8f0;--muted:#94a3b8;--white:#fff;
+  --gold:#fbbf24;--cinema-red:#dc2626;
+  --gradient:linear-gradient(135deg,#f59e0b 0%,#f97316 100%);
+}
+html{scroll-behavior:smooth;font-size:15px}
+body{font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;overflow-x:hidden}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+img{max-width:100%}
+
+/* ===== NAV ===== */
+.nav{position:sticky;top:0;z-index:1000;background:rgba(10,14,23,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:.55rem 0}
+.nav-inner{max-width:1380px;margin:0 auto;display:flex;align-items:center;gap:1rem;padding:0 1.5rem;overflow-x:auto}
+.nav-brand{font-weight:800;font-size:1.15rem;color:var(--accent);white-space:nowrap;letter-spacing:-.02em}
+.nav-links{display:flex;gap:.15rem;flex:1;justify-content:flex-end}
+.nav-links a{color:var(--muted);font-size:.72rem;padding:.35rem .55rem;border-radius:6px;white-space:nowrap;transition:.2s;font-weight:500;letter-spacing:.01em}
+.nav-links a:hover,.nav-links a.active{color:var(--white);background:rgba(245,158,11,.12);text-decoration:none}
+
+/* ===== LAYOUT ===== */
+.container{max-width:1380px;margin:0 auto;padding:0 1.5rem}
+section{padding:3.5rem 0}
+.section-label{font-size:.7rem;text-transform:uppercase;letter-spacing:.15em;color:var(--accent);font-weight:700;margin-bottom:.35rem}
+.section-title{font-size:2rem;font-weight:800;color:var(--white);margin-bottom:.5rem;letter-spacing:-.03em}
+.section-sub{color:var(--muted);font-size:.95rem;max-width:720px;margin-bottom:2rem}
+
+/* ===== HERO ===== */
+.hero{padding:4.5rem 0 3rem;background:linear-gradient(180deg,rgba(245,158,11,.06) 0%,transparent 60%)}
+.hero-grid{display:grid;grid-template-columns:1fr 1fr;gap:3rem;align-items:center}
+.hero h1{font-size:3rem;font-weight:900;letter-spacing:-.04em;line-height:1.1;margin-bottom:.5rem}
+.hero h1 span{background:var(--gradient);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero-subtitle{font-size:1.1rem;color:var(--muted);margin-bottom:1.5rem;line-height:1.5}
+.hero-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.hero-stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;text-align:center}
+.hero-stat .num{font-size:1.8rem;font-weight:800;color:var(--white)}
+.hero-stat .label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.15rem}
+.ticker-badge{display:inline-flex;align-items:center;gap:.5rem;background:var(--card);border:1px solid var(--border);padding:.45rem 1rem;border-radius:99px;font-size:.85rem;margin-bottom:1rem}
+.ticker-badge .dot{width:8px;height:8px;border-radius:50%;background:var(--accent3);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ===== CARDS ===== */
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem;transition:.2s}
+.card:hover{border-color:rgba(245,158,11,.3)}
+.card-header{display:flex;align-items:center;gap:.75rem;margin-bottom:1rem}
+.card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.card-title{font-size:1rem;font-weight:700;color:var(--white)}
+
+/* ===== GRIDS ===== */
+.grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:1.5rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+
+/* ===== KPI ROW ===== */
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:1rem;margin-bottom:2rem}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.1rem;text-align:center}
+.kpi .val{font-size:1.5rem;font-weight:800;color:var(--white)}
+.kpi .lbl{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:.2rem}
+.kpi .delta{font-size:.7rem;margin-top:.25rem;font-weight:600}
+.kpi .delta.up{color:var(--accent3)}.kpi .delta.down{color:var(--red)}
+
+/* ===== CHART CONTAINERS ===== */
+.chart-wrap{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:1.5rem}
+.chart-wrap h3{font-size:1rem;font-weight:700;color:var(--white);margin-bottom:1rem}
+.chart-wrap canvas{width:100%!important}
+
+/* ===== TABLE ===== */
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.82rem}
+th{background:rgba(245,158,11,.08);color:var(--accent);font-weight:700;text-align:left;padding:.7rem 1rem;white-space:nowrap;font-size:.7rem;text-transform:uppercase;letter-spacing:.06em}
+td{padding:.65rem 1rem;border-top:1px solid var(--border);color:var(--text);white-space:nowrap}
+tr:hover td{background:rgba(245,158,11,.03)}
+
+/* ===== BULL BEAR ===== */
+.bull-bear{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem}
+.bull-col{border-left:3px solid var(--accent3);padding-left:1.5rem}
+.bear-col{border-left:3px solid var(--red);padding-left:1.5rem}
+.bull-col h3{color:var(--accent3)}.bear-col h3{color:var(--red)}
+.bb-item{margin-bottom:1rem}
+.bb-item h4{font-size:.85rem;font-weight:700;color:var(--white);margin-bottom:.25rem}
+.bb-item p{font-size:.82rem;color:var(--muted);line-height:1.55}
+
+/* ===== TIMELINE ===== */
+.timeline{position:relative;padding-left:2rem}
+.timeline::before{content:'';position:absolute;left:.5rem;top:0;bottom:0;width:2px;background:var(--border)}
+.tl-item{position:relative;margin-bottom:1.5rem;padding-left:1.5rem}
+.tl-item::before{content:'';position:absolute;left:-1.55rem;top:.35rem;width:12px;height:12px;border-radius:50%;background:var(--accent);border:2px solid var(--bg)}
+.tl-date{font-size:.7rem;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.06em}
+.tl-title{font-size:.9rem;font-weight:700;color:var(--white);margin:.2rem 0}
+.tl-desc{font-size:.82rem;color:var(--muted)}
+
+/* ===== THAILAND MAP ===== */
+.map-container{position:relative;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:2rem;min-height:500px}
+.map-svg-wrap{display:flex;justify-content:center;align-items:center}
+.map-legend{display:flex;gap:1.5rem;margin-top:1rem;flex-wrap:wrap;justify-content:center}
+.map-legend-item{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--muted)}
+.map-legend-item .dot{width:10px;height:10px;border-radius:50%}
+
+/* ===== GAUGE ===== */
+.gauge-row{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+.gauge-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center}
+.gauge-card .gauge-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.gauge-card .gauge-value{font-size:1.6rem;font-weight:800;color:var(--white)}
+.gauge-card .gauge-sub{font-size:.72rem;color:var(--muted);margin-top:.2rem}
+
+/* ===== MOAT BARS ===== */
+.moat-bar{margin-bottom:1.2rem}
+.moat-bar .mb-label{font-size:.8rem;font-weight:600;color:var(--white);margin-bottom:.35rem;display:flex;justify-content:space-between}
+.moat-bar .mb-track{height:8px;background:rgba(255,255,255,.06);border-radius:99px;overflow:hidden}
+.moat-bar .mb-fill{height:100%;border-radius:99px;transition:width 1.5s ease}
+
+/* ===== SENSITIVITY TABLE ===== */
+.sens-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.sens-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem;text-align:center}
+.sens-card .trigger{font-size:.75rem;color:var(--muted);margin-bottom:.3rem}
+.sens-card .impact{font-size:1.1rem;font-weight:700}
+.sens-card .impact.neg{color:var(--red)}.sens-card .impact.pos{color:var(--accent3)}
+
+/* ===== ANALYST CARDS ===== */
+.analyst-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+.analyst-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center}
+.analyst-card .broker{font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.analyst-card .rating{font-size:.85rem;font-weight:700;margin:.4rem 0;padding:.25rem .75rem;border-radius:99px;display:inline-block}
+.rating-buy{background:rgba(16,185,129,.15);color:var(--accent3)}
+.rating-sell{background:rgba(239,68,68,.15);color:var(--red)}
+.rating-op{background:rgba(59,130,246,.15);color:var(--accent2)}
+.analyst-card .tp{font-size:1.3rem;font-weight:800;color:var(--white);margin:.3rem 0}
+.analyst-card .method{font-size:.7rem;color:var(--muted)}
+
+/* ===== TABS ===== */
+.tab-nav{display:flex;gap:.25rem;margin-bottom:1.5rem;border-bottom:1px solid var(--border);padding-bottom:0}
+.tab-btn{padding:.6rem 1.2rem;font-size:.8rem;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+.tab-btn:hover{color:var(--white)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-content{display:none}.tab-content.active{display:block}
+
+/* ===== PREMIUM FORMATS ===== */
+.format-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+.format-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center;transition:.2s}
+.format-card:hover{transform:translateY(-3px);border-color:var(--accent)}
+.format-card .f-icon{font-size:2rem;margin-bottom:.5rem}
+.format-card .f-name{font-size:.9rem;font-weight:700;color:var(--white);margin-bottom:.25rem}
+.format-card .f-count{font-size:1.5rem;font-weight:800;color:var(--accent)}
+.format-card .f-desc{font-size:.72rem;color:var(--muted);margin-top:.25rem}
+
+/* ===== SCORE CARD ===== */
+.score-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem}
+.score-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.25rem;text-align:center}
+.score-item .s-score{font-size:2rem;font-weight:900}
+.score-item .s-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-top:.3rem}
+.score-item .s-grade{font-size:.75rem;font-weight:600;margin-top:.25rem;padding:.15rem .5rem;border-radius:99px;display:inline-block}
+
+/* ===== FLOW DIAGRAM ===== */
+.flow-row{display:flex;align-items:center;justify-content:center;gap:.5rem;flex-wrap:wrap;margin:2rem 0}
+.flow-box{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:.75rem 1.25rem;text-align:center;min-width:140px}
+.flow-box .fb-title{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.flow-box .fb-val{font-size:1rem;font-weight:700;color:var(--white);margin-top:.2rem}
+.flow-arrow{color:var(--accent);font-size:1.5rem;font-weight:700}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1024px){
+  .hero-grid,.grid-2,.bull-bear{grid-template-columns:1fr}
+  .grid-3,.format-grid,.sens-grid{grid-template-columns:repeat(2,1fr)}
+  .grid-4,.kpi-row,.analyst-grid,.score-grid,.gauge-row{grid-template-columns:repeat(2,1fr)}
+  .hero h1{font-size:2.2rem}
+}
+@media(max-width:640px){
+  .grid-3,.format-grid,.sens-grid,.grid-4,.kpi-row,.analyst-grid,.score-grid,.gauge-row{grid-template-columns:1fr}
+  .nav-links a{font-size:.65rem;padding:.3rem .4rem}
+}
+
+/* ===== ANIMATED COUNTER ===== */
+.counter{display:inline-block}
+
+/* ===== SCROLL REVEAL ===== */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.reveal.visible{opacity:1;transform:translateY(0)}
+
+/* ===== TICKER STRIP ===== */
+.ticker-strip{background:var(--surface);border-bottom:1px solid var(--border);padding:.45rem 0;overflow:hidden}
+.ticker-strip-inner{display:flex;gap:2.5rem;animation:tickerScroll 30s linear infinite;white-space:nowrap}
+.ticker-item{display:flex;align-items:center;gap:.5rem;font-size:.75rem;color:var(--muted)}
+.ticker-item .tv{font-weight:700;color:var(--white)}
+@keyframes tickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+/* ===== DIVIDER ===== */
+.divider{height:1px;background:linear-gradient(90deg,transparent,var(--border),transparent);margin:0}
+
+/* ===== POPSCREEN MAP ===== */
+.screen-map{display:grid;grid-template-columns:repeat(5,1fr);gap:.75rem}
+.screen-map-item{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:.75rem;text-align:center;transition:.2s}
+.screen-map-item:hover{border-color:var(--accent);transform:scale(1.03)}
+.screen-map-item .region{font-size:.7rem;color:var(--muted);font-weight:600}
+.screen-map-item .count{font-size:1.1rem;font-weight:800;color:var(--white);margin:.2rem 0}
+.screen-map-item .bar{height:4px;border-radius:99px;background:rgba(255,255,255,.06);overflow:hidden}
+.screen-map-item .bar-fill{height:100%;border-radius:99px;background:var(--gradient)}
+
+/* ===== WATERFALL ===== */
+.waterfall-note{font-size:.72rem;color:var(--muted);margin-top:.5rem;font-style:italic}
+
+/* ===== TOOLTIP ===== */
+.info-tip{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(245,158,11,.15);color:var(--accent);font-size:.6rem;font-weight:700;cursor:help;margin-left:.35rem;vertical-align:middle}
+</style>
+</head>
+<body>
+
+<!-- ===== NAVIGATION ===== -->
+<nav class="nav">
+<div class="nav-inner">
+  <div class="nav-brand">MAJOR TB</div>
+  <div class="nav-links">
+    <a href="#overview">Overview</a>
+    <a href="#industry">Industry</a>
+    <a href="#business">Business Model</a>
+    <a href="#moat">Moat</a>
+    <a href="#footprint">Footprint</a>
+    <a href="#formats">Formats</a>
+    <a href="#growth">Growth</a>
+    <a href="#financials">Financials</a>
+    <a href="#capital">Capital</a>
+    <a href="#valuation">Valuation</a>
+    <a href="#bullbear">Bull/Bear</a>
+    <a href="#risks">Risks</a>
+    <a href="#analysts">Analysts</a>
+    <a href="#quality">Quality</a>
+  </div>
+</div>
+</nav>
+
+<!-- ===== TICKER STRIP ===== -->
+<div class="ticker-strip">
+<div class="ticker-strip-inner">
+  <div class="ticker-item"><span class="tv">MAJOR TB</span> THB 7.80</div>
+  <div class="ticker-item">Market Cap <span class="tv">$200M</span></div>
+  <div class="ticker-item">P/E 2026E <span class="tv">7.1x</span></div>
+  <div class="ticker-item">Div Yield <span class="tv">3.4%</span></div>
+  <div class="ticker-item">Market Share <span class="tv">~70%</span></div>
+  <div class="ticker-item">Screens <span class="tv">863</span></div>
+  <div class="ticker-item">EBITDA Margin <span class="tv">29%</span></div>
+  <div class="ticker-item">ROE <span class="tv">11%</span></div>
+  <div class="ticker-item"><span class="tv">MAJOR TB</span> THB 7.80</div>
+  <div class="ticker-item">Market Cap <span class="tv">$200M</span></div>
+  <div class="ticker-item">P/E 2026E <span class="tv">7.1x</span></div>
+  <div class="ticker-item">Div Yield <span class="tv">3.4%</span></div>
+  <div class="ticker-item">Market Share <span class="tv">~70%</span></div>
+  <div class="ticker-item">Screens <span class="tv">863</span></div>
+  <div class="ticker-item">EBITDA Margin <span class="tv">29%</span></div>
+  <div class="ticker-item">ROE <span class="tv">11%</span></div>
+</div>
+</div>
+
+<!-- ===== HERO ===== -->
+<section class="hero" id="overview">
+<div class="container">
+  <div class="hero-grid">
+    <div>
+      <div class="ticker-badge"><span class="dot"></span> SET: MAJOR TB &mdash; Live Research</div>
+      <h1><span>Major Cineplex</span><br>Group PLC</h1>
+      <p class="hero-subtitle">Thailand's dominant cinema operator commands ~70% market share across 863 screens in 187 branches. Founded in 1994 by Vicha Poolvaraluk, the company has evolved from a single-screen theater into a vertically integrated entertainment-and-content platform spanning premium cinema, FMCG popcorn, local film production, and digital subscriptions.</p>
+      <div class="hero-stats">
+        <div class="hero-stat"><div class="num" data-target="70">0</div><div class="label">% Market Share</div></div>
+        <div class="hero-stat"><div class="num" data-target="863">0</div><div class="label">Screens</div></div>
+        <div class="hero-stat"><div class="num" data-target="187">0</div><div class="label">Branches</div></div>
+      </div>
+    </div>
+    <div>
+      <!-- TradingView Widget -->
+      <div style="border-radius:14px;overflow:hidden;border:1px solid var(--border)">
+        <div class="tradingview-widget-container">
+          <div id="tradingview_widget" style="height:420px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== INDUSTRY PRIMER ===== -->
+<div class="divider"></div>
+<section id="industry">
+<div class="container">
+  <div class="section-label">First Principles</div>
+  <div class="section-title">Thailand's Cinema Industry</div>
+  <p class="section-sub">Understanding Major Cineplex starts with understanding how the cinema business works in Thailand and why it looks different from Western markets.</p>
+
+  <div class="grid-3 reveal">
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(245,158,11,.12)">&#127909;</div><div class="card-title">How Cinemas Make Money</div></div>
+      <p style="font-size:.82rem;color:var(--muted)">A cinema has three revenue engines: <strong style="color:var(--white)">ticket sales</strong> (box office admissions, ~50% of revenue), <strong style="color:var(--white)">concessions</strong> (popcorn, drinks &mdash; ~26% of revenue but ~43% of profit due to massive margins), and <strong style="color:var(--white)">advertising</strong> (pre-show ads, screen ads &mdash; ~13% of revenue, ~30% of profit). The key insight: concessions and advertising are where the real profit is &mdash; tickets are the traffic driver.</p>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(59,130,246,.12)">&#127470;&#127481;</div><div class="card-title">Why Thailand Is Special</div></div>
+      <p style="font-size:.82rem;color:var(--muted)">Thailand is a <strong style="color:var(--white)">virtual duopoly</strong>: Major Cineplex (~70%) and SF Corporation (~30%). That's it. Unlike the US with dozens of chains, Thailand's market is locked up. The real twist: <strong style="color:var(--white)">Thai films now outperform Hollywood</strong> domestically &mdash; 62% of box office in 2024 was local content, reversing the historical dominance of Western films. This is a cultural renaissance similar to what India's Bollywood achieved.</p>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(16,185,129,.12)">&#128200;</div><div class="card-title">Screen Penetration Gap</div></div>
+      <p style="font-size:.82rem;color:var(--muted)">Thailand has <strong style="color:var(--white)">1 screen per 58,000 people</strong>. Compare that to the US (1 per 8,400) or South Korea (1 per 16,000). This massive gap means there's significant room for expansion, especially in Thailand's provincial regions where cinema is a growing urbanization trend. Major is actively targeting 26 new branches in these underserved secondary cities.</p>
+    </div>
+  </div>
+
+  <div style="margin-top:2rem" class="reveal">
+    <div class="chart-wrap">
+      <h3>Screen Penetration: Population per Cinema Screen</h3>
+      <canvas id="penetrationChart" height="100"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-2 reveal" style="margin-top:1.5rem">
+    <div class="chart-wrap">
+      <h3>Thai Film vs Hollywood Box Office Share</h3>
+      <canvas id="thaiVsHollywood" height="180"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Thai Language Film Supply (# of Films)</h3>
+      <canvas id="thaiFilmSupply" height="180"></canvas>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== BUSINESS MODEL ===== -->
+<div class="divider"></div>
+<section id="business">
+<div class="container">
+  <div class="section-label">Business Model</div>
+  <div class="section-title">Total Lifestyle Entertainment Complex</div>
+  <p class="section-sub">Major Cineplex doesn't just show movies. It integrates theaters with bowling, karaoke, shopping, dining, and locally produced content into a single entertainment destination. Here's how the money flows.</p>
+
+  <!-- Revenue Flow Diagram -->
+  <div class="flow-row reveal">
+    <div class="flow-box"><div class="fb-title">Foot Traffic Driver</div><div class="fb-val">Movie Tickets</div></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box"><div class="fb-title">Margin Engine</div><div class="fb-val">Popcorn & F&B</div></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box"><div class="fb-title">Pure Margin</div><div class="fb-val">Screen Ads</div></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box"><div class="fb-title">Ancillary</div><div class="fb-val">Bowling, Rent</div></div>
+    <div class="flow-arrow">&rarr;</div>
+    <div class="flow-box" style="border-color:var(--accent)"><div class="fb-title">Content Control</div><div class="fb-val">M Studio Films</div></div>
+  </div>
+
+  <div class="grid-2 reveal" style="margin-top:1.5rem">
+    <div class="chart-wrap">
+      <h3>Revenue Breakdown by Segment (FY2025)</h3>
+      <canvas id="revSegment" height="220"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Profit Contribution by Segment (FY2025)</h3>
+      <canvas id="profitSegment" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-3 reveal" style="margin-top:1.5rem">
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(245,158,11,.12)">&#127871;</div><div class="card-title">Popcorn Empire</div></div>
+      <p style="font-size:.82rem;color:var(--muted)">Concessions are the profit powerhouse. Major's branded popcorn is now sold <strong style="color:var(--white)">outside cinemas</strong> at 14,000+ 7-Eleven stores, on Grab, Foodpanda, and in supermarkets. The new TKN joint venture with Taokaenoi targets 1.5-2.0M bags/month production, scaling from just 0.4-0.5M bags in-house. First-year revenue target: <strong style="color:var(--accent)">THB 200M</strong>.</p>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(59,130,246,.12)">&#127916;</div><div class="card-title">M Studio Content</div></div>
+      <p style="font-size:.82rem;color:var(--muted)">Major owns M Studio &mdash; Thailand's #1 film studio with <strong style="color:var(--white)">39% domestic producer market share</strong>. They aim to release 20-24 Thai films/year. Vertical integration means they capture margin at both production AND exhibition. Death Whisperer 3 (M Studio) was Thailand's biggest 2025 film &mdash; outgrossing Avatar 3.</p>
+    </div>
+    <div class="card">
+      <div class="card-header"><div class="card-icon" style="background:rgba(16,185,129,.12)">&#128241;</div><div class="card-title">Digital Ecosystem</div></div>
+      <p style="font-size:.82rem;color:var(--muted)"><strong style="color:var(--white)">M Pass</strong> subscription: 200K members at THB 300/month ARPU (targeting 400K). <strong style="color:var(--white)">M Generation</strong> loyalty: 2M+ active users. Super App with QR ticketless entry. 5G DCP distribution via AIS replacing physical hard drives. Online kiosks replacing human ticket staff to cut wages.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== COMPETITIVE MOAT ===== -->
+<div class="divider"></div>
+<section id="moat">
+<div class="container">
+  <div class="section-label">Competitive Advantage</div>
+  <div class="section-title">The Major Cineplex Moat</div>
+  <p class="section-sub">Three interlocking structural advantages make this business extremely difficult to disrupt or replicate.</p>
+
+  <div class="grid-2 reveal">
+    <div>
+      <div class="moat-bar">
+        <div class="mb-label"><span>Scale & Capital Barriers</span><span style="color:var(--accent)">95/100</span></div>
+        <div class="mb-track"><div class="mb-fill" style="width:95%;background:var(--gradient)"></div></div>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:.3rem">863 screens vs SF's 395. Economies of scale allow 40-50% revenue-sharing terms with distributors. Capital intensity and prime real estate lock-up make new entry virtually impossible.</p>
+      </div>
+      <div class="moat-bar">
+        <div class="mb-label"><span>Vertical Content Integration</span><span style="color:var(--accent)">85/100</span></div>
+        <div class="mb-track"><div class="mb-fill" style="width:85%;background:linear-gradient(135deg,#3b82f6,#6366f1)"></div></div>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:.3rem">M Studio is Thailand's #1 film producer. Controls supply of Thai films (61% market share in local content distribution). Insulates from Hollywood volatility.</p>
+      </div>
+      <div class="moat-bar">
+        <div class="mb-label"><span>Infrastructure Ownership</span><span style="color:var(--accent)">80/100</span></div>
+        <div class="mb-track"><div class="mb-fill" style="width:80%;background:linear-gradient(135deg,#10b981,#14b8a6)"></div></div>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Owns many standalone branch buildings (unlike competitors who lease). Full control over screening schedules &mdash; earlier first shows, later last shows than competitors. Exclusive IMAX license for Thailand.</p>
+      </div>
+      <div class="moat-bar">
+        <div class="mb-label"><span>Concession Brand Power</span><span style="color:var(--accent)">75/100</span></div>
+        <div class="mb-track"><div class="mb-fill" style="width:75%;background:linear-gradient(135deg,#f59e0b,#ef4444)"></div></div>
+        <p style="font-size:.75rem;color:var(--muted);margin-top:.3rem">Popstar popcorn brand sold across 14,000+ retail locations. JV with Taokaenoi for FMCG distribution. Converting cinema brand recognition into packaged consumer goods.</p>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <h3>Market Share: Major vs SF Corporation vs Global Peers</h3>
+      <canvas id="marketShareChart" height="280"></canvas>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== FOOTPRINT ===== -->
+<div class="divider"></div>
+<section id="footprint">
+<div class="container">
+  <div class="section-label">Operational Footprint</div>
+  <div class="section-title">Where Major Cineplex Operates</div>
+  <p class="section-sub">Covering all 77 provinces of Thailand, Major Cineplex's network is the country's largest entertainment infrastructure. The company is pivoting from saturated Bangkok to high-growth provincial markets.</p>
+
+  <div class="grid-2 reveal">
+    <div>
+      <div class="screen-map">
+        <div class="screen-map-item" style="border-color:var(--accent)">
+          <div class="region">Bangkok & Metro</div>
+          <div class="count">~75</div>
+          <div style="font-size:.65rem;color:var(--muted)">branches</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:100%"></div></div>
+        </div>
+        <div class="screen-map-item">
+          <div class="region">Central</div>
+          <div class="count">~28</div>
+          <div style="font-size:.65rem;color:var(--muted)">branches</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:37%"></div></div>
+        </div>
+        <div class="screen-map-item">
+          <div class="region">Northeast</div>
+          <div class="count">~30</div>
+          <div style="font-size:.65rem;color:var(--muted)">branches</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:40%"></div></div>
+        </div>
+        <div class="screen-map-item">
+          <div class="region">North</div>
+          <div class="count">~22</div>
+          <div style="font-size:.65rem;color:var(--muted)">branches</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:29%"></div></div>
+        </div>
+        <div class="screen-map-item">
+          <div class="region">South</div>
+          <div class="count">~20</div>
+          <div style="font-size:.65rem;color:var(--muted)">branches</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:27%"></div></div>
+        </div>
+        <div class="screen-map-item">
+          <div class="region">East</div>
+          <div class="count">~12</div>
+          <div style="font-size:.65rem;color:var(--muted)">branches</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:16%"></div></div>
+        </div>
+        <div class="screen-map-item" style="border-color:var(--red);opacity:.6">
+          <div class="region">Cambodia</div>
+          <div class="count">Divested</div>
+          <div style="font-size:.65rem;color:var(--red)">Feb 2026</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:0%"></div></div>
+        </div>
+        <div class="screen-map-item" style="opacity:.7">
+          <div class="region">Laos</div>
+          <div class="count">~3</div>
+          <div style="font-size:.65rem;color:var(--muted)">branches</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:4%"></div></div>
+        </div>
+        <div class="screen-map-item" style="border-color:var(--accent3)">
+          <div class="region">Expansion</div>
+          <div class="count">+26</div>
+          <div style="font-size:.65rem;color:var(--accent3)">planned</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:35%;background:linear-gradient(90deg,#10b981,#14b8a6)"></div></div>
+        </div>
+        <div class="screen-map-item">
+          <div class="region">7-Eleven</div>
+          <div class="count">14K+</div>
+          <div style="font-size:.65rem;color:var(--accent)">popcorn POS</div>
+          <div class="bar" style="margin-top:.35rem"><div class="bar-fill" style="width:100%;background:linear-gradient(90deg,#f59e0b,#f97316)"></div></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="chart-wrap" style="height:100%">
+        <h3>Guest Count Breakdown: Bangkok vs Upcountry (Millions)</h3>
+        <canvas id="guestBreakdown" height="250"></canvas>
+        <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem">Post-COVID, upcountry (provincial) audiences have become the majority of Major's guests. Bangkok moviegoers &mdash; who traditionally favored Hollywood &mdash; have declined as urban consumers shift to streaming. Provincial audiences prefer Thai-language content.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== PREMIUM FORMATS ===== -->
+<div class="divider"></div>
+<section id="formats">
+<div class="container">
+  <div class="section-label">Experience Moat</div>
+  <div class="section-title">Premium Format Portfolio</div>
+  <p class="section-sub">These proprietary and licensed formats cannot be replicated by home streaming. They command premium pricing and drive incremental foot traffic.</p>
+
+  <div class="format-grid reveal">
+    <div class="format-card">
+      <div class="f-icon">&#127902;</div>
+      <div class="f-name">IMAX with Laser</div>
+      <div class="f-count">9</div>
+      <div class="f-desc">Exclusive Thailand license. Upgrading all to Laser projection. Premium ticket pricing power.</div>
+    </div>
+    <div class="format-card">
+      <div class="f-icon">&#127904;</div>
+      <div class="f-name">4DX Motion Seats</div>
+      <div class="f-count">9</div>
+      <div class="f-desc">24 physical/environmental effects including proprietary fog storm feature.</div>
+    </div>
+    <div class="format-card">
+      <div class="f-icon">&#128250;</div>
+      <div class="f-name">ScreenX 270&deg;</div>
+      <div class="f-count">3</div>
+      <div class="f-desc">Panoramic projection across three walls. Immersive experience unique to theaters.</div>
+    </div>
+    <div class="format-card">
+      <div class="f-icon">&#128118;</div>
+      <div class="f-name">Kids Cinema</div>
+      <div class="f-count">14</div>
+      <div class="f-desc">Specialized layouts with slides, reduced volume. Targets family demographic.</div>
+    </div>
+    <div class="format-card">
+      <div class="f-icon">&#128054;</div>
+      <div class="f-name">Pet Cinema</div>
+      <div class="f-count">3</div>
+      <div class="f-desc">Caters to the growing pet-owner demographic in Thailand. Unique niche.</div>
+    </div>
+    <div class="format-card">
+      <div class="f-icon">&#127942;</div>
+      <div class="f-name">Enigma VIP</div>
+      <div class="f-count">33 seats</div>
+      <div class="f-desc">Ultra-premium with full bar & lounge. Corporate/VIP clients. Highest per-seat revenue.</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== GROWTH STRATEGY ===== -->
+<div class="divider"></div>
+<section id="growth">
+<div class="container">
+  <div class="section-label">Strategy</div>
+  <div class="section-title">Growth Vectors & Strategic Roadmap</div>
+  <p class="section-sub">Major Cineplex is executing a multi-pronged strategy to reduce Hollywood dependence and diversify revenue beyond box office admissions.</p>
+
+  <div class="grid-2 reveal">
+    <div>
+      <div class="timeline">
+        <div class="tl-item">
+          <div class="tl-date">2021</div>
+          <div class="tl-title">Siam Future Divestiture &mdash; THB 7.77B</div>
+          <div class="tl-desc">Sold 30.4% stake in SF to Central Pattana. Injected THB 7.1B net cash, transforming from net debt to net cash.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">2022</div>
+          <div class="tl-title">Strategic Stakes &mdash; Workpoint + Taokaenoi</div>
+          <div class="tl-desc">Acquired ~10% in Workpoint (THB 728M) for content pipeline, ~10% in TKN (THB 962M) for popcorn distribution.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">2023</div>
+          <div class="tl-title">MPIC Divestment &mdash; THB 650M</div>
+          <div class="tl-desc">Sold M Pictures (92.46% stake) to lean cost structure. Saves THB 60-80M/year in admin expenses.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">2025 Q4</div>
+          <div class="tl-title">TKN Popcorn JV Launched</div>
+          <div class="tl-desc">49% stake in TKN & Major Popcorn Co. FMCG retail expansion targeting THB 200M first-year revenue.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">Feb 2026</div>
+          <div class="tl-title">Cambodia Exit + New Buyback</div>
+          <div class="tl-desc">Divested 70% Cambodia stake ($5.14M). New THB 600M buyback program through May 2026.</div>
+        </div>
+        <div class="tl-item">
+          <div class="tl-date">2026E</div>
+          <div class="tl-title">Provincial Expansion & 69 Thai Films</div>
+          <div class="tl-desc">26 new branches in secondary cities. 69 Thai films slated (vs 55 in 2025). Major Hollywood slate: Avengers, Spider-Man, Toy Story 5.</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="chart-wrap" style="margin-bottom:1.5rem">
+        <h3>Ticket Sales Recovery (Millions)</h3>
+        <canvas id="ticketChart" height="200"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <h3>Share Count Reduction: Aggressive Buyback Shrinks Float</h3>
+        <canvas id="shareCount" height="180"></canvas>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== FINANCIALS ===== -->
+<div class="divider"></div>
+<section id="financials">
+<div class="container">
+  <div class="section-label">Financials</div>
+  <div class="section-title">Financial Performance Deep Dive</div>
+  <p class="section-sub">Revenue peaked at ~THB 11B in 2019, troughed at THB 3B during COVID, and is recovering. The real story is margin expansion through cost discipline despite top-line stagnation.</p>
+
+  <div class="kpi-row reveal">
+    <div class="kpi"><div class="val" data-target="7631" data-prefix="" data-suffix="">0</div><div class="lbl">Revenue (THB M)</div><div class="delta down">-2% YoY</div></div>
+    <div class="kpi"><div class="val" data-target="2240" data-prefix="" data-suffix="">0</div><div class="lbl">EBITDA (THB M)</div><div class="delta up">+2% YoY</div></div>
+    <div class="kpi"><div class="val">29%</div><div class="lbl">EBITDA Margin</div><div class="delta up">+500bps vs FY24</div></div>
+    <div class="kpi"><div class="val" data-target="736" data-prefix="" data-suffix="">0</div><div class="lbl">Op Profit (THB M)</div><div class="delta up">+10% YoY</div></div>
+    <div class="kpi"><div class="val" data-target="631" data-prefix="" data-suffix="">0</div><div class="lbl">Core Net Profit</div><div class="delta up">+6% YoY</div></div>
+    <div class="kpi"><div class="val">36%</div><div class="lbl">Gross Margin</div><div class="delta up">+100bps</div></div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-nav">
+    <button class="tab-btn active" data-tab="income">Income Statement</button>
+    <button class="tab-btn" data-tab="balance">Balance Sheet</button>
+    <button class="tab-btn" data-tab="cashflow">Cash Flow</button>
+    <button class="tab-btn" data-tab="ratios">Key Ratios</button>
+  </div>
+
+  <div class="tab-content active" id="tab-income">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>THB Millions</th><th>2021A</th><th>2022A</th><th>2023A</th><th>2024A</th><th>2025CL</th><th>2026CL</th><th>2027CL</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Revenue</strong></td><td>3,010</td><td>6,388</td><td>8,551</td><td>7,767</td><td>7,118</td><td>7,134</td><td>7,169</td></tr>
+          <tr><td>COGS (ex-D&A)</td><td>(1,608)</td><td>(3,300)</td><td>(4,463)</td><td>(3,794)</td><td>(3,490)</td><td>(3,572)</td><td>(3,662)</td></tr>
+          <tr><td><strong>Gross Profit</strong></td><td>1,401</td><td>3,088</td><td>4,088</td><td>3,973</td><td>3,628</td><td>3,562</td><td>3,507</td></tr>
+          <tr><td>SG&A</td><td>(1,610)</td><td>(1,699)</td><td>(2,200)</td><td>(2,268)</td><td>(1,860)</td><td>(1,860)</td><td>(1,864)</td></tr>
+          <tr><td><strong>Op EBITDA</strong></td><td>146</td><td>1,747</td><td>2,070</td><td>1,861</td><td>1,928</td><td>1,862</td><td>1,799</td></tr>
+          <tr><td>D&A</td><td>(1,250)</td><td>(1,311)</td><td>(1,221)</td><td>(1,252)</td><td>(1,273)</td><td>(1,223)</td><td>(1,177)</td></tr>
+          <tr><td><strong>Op EBIT</strong></td><td>(1,104)</td><td>435</td><td>850</td><td>608</td><td>655</td><td>639</td><td>621</td></tr>
+          <tr><td>Net Interest</td><td>(258)</td><td>(201)</td><td>(204)</td><td>(224)</td><td>(225)</td><td>(200)</td><td>(128)</td></tr>
+          <tr><td><strong>Net Profit</strong></td><td>1,581</td><td>252</td><td>1,042</td><td>744</td><td>504</td><td>532</td><td>579</td></tr>
+          <tr><td>EPS (THB)</td><td>1.8</td><td>0.3</td><td>1.2</td><td>0.9</td><td>0.6</td><td>0.6</td><td>0.7</td></tr>
+          <tr><td>DPS (THB)</td><td>1.6</td><td>0.3</td><td>0.7</td><td>0.2</td><td>0.3</td><td>0.4</td><td>0.4</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:.7rem;color:var(--muted);margin-top:.5rem">Source: CLSA estimates. 2021 net profit includes one-off SF divestiture gain.</p>
+  </div>
+
+  <div class="tab-content" id="tab-balance">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>THB Millions</th><th>2021A</th><th>2022A</th><th>2023A</th><th>2024A</th><th>2025CL</th><th>2026CL</th><th>2027CL</th></tr></thead>
+        <tbody>
+          <tr><td>Cash & Equivalents</td><td>5,116</td><td>3,745</td><td>2,724</td><td>2,183</td><td>1,818</td><td>1,834</td><td>2,136</td></tr>
+          <tr><td>Total Current Assets</td><td>6,160</td><td>4,659</td><td>3,742</td><td>3,176</td><td>2,707</td><td>2,815</td><td>3,034</td></tr>
+          <tr><td>Fixed Assets</td><td>4,719</td><td>4,476</td><td>4,463</td><td>4,361</td><td>4,205</td><td>3,882</td><td>3,605</td></tr>
+          <tr><td>Investments</td><td>1,974</td><td>1,905</td><td>1,897</td><td>2,008</td><td>2,036</td><td>2,096</td><td>2,160</td></tr>
+          <tr><td><strong>Total Assets</strong></td><td>16,519</td><td>14,847</td><td>14,426</td><td>14,039</td><td>13,441</td><td>13,287</td><td>13,293</td></tr>
+          <tr><td>Short-term Debt</td><td>2,025</td><td>490</td><td>995</td><td>950</td><td>2,638</td><td>2,638</td><td>2,638</td></tr>
+          <tr><td>Long-term Debt</td><td>915</td><td>1,416</td><td>993</td><td>1,995</td><td>1,396</td><td>977</td><td>684</td></tr>
+          <tr><td><strong>Total Liabilities</strong></td><td>9,233</td><td>7,625</td><td>8,314</td><td>8,684</td><td>8,991</td><td>8,581</td><td>8,302</td></tr>
+          <tr><td><strong>Shareholder Funds</strong></td><td>7,170</td><td>7,092</td><td>5,991</td><td>5,209</td><td>4,301</td><td>4,552</td><td>4,834</td></tr>
+          <tr><td>Total Debt</td><td>2,940</td><td>1,906</td><td>1,988</td><td>2,945</td><td>4,034</td><td>3,616</td><td>3,322</td></tr>
+          <tr><td>Net Debt / (Cash)</td><td>(2,176)</td><td>(1,839)</td><td>(736)</td><td>762</td><td>2,216</td><td>1,781</td><td>1,187</td></tr>
+          <tr><td>BVPS (THB)</td><td>8.0</td><td>7.9</td><td>6.7</td><td>6.3</td><td>5.2</td><td>5.5</td><td>5.8</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-cashflow">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>THB Millions</th><th>2023A</th><th>2024A</th><th>2025CL</th><th>2026CL</th><th>2027CL</th></tr></thead>
+        <tbody>
+          <tr><td>Operating Profit</td><td>850</td><td>608</td><td>655</td><td>639</td><td>621</td></tr>
+          <tr><td>D&A</td><td>1,221</td><td>1,252</td><td>1,273</td><td>1,223</td><td>1,177</td></tr>
+          <tr><td>WC Changes</td><td>166</td><td>(483)</td><td>(678)</td><td>(82)</td><td>96</td></tr>
+          <tr><td><strong>Net Operating CF</strong></td><td>1,831</td><td>631</td><td>374</td><td>1,092</td><td>1,268</td></tr>
+          <tr><td>Capex</td><td>(709)</td><td>(1,151)</td><td>(540)</td><td>(500)</td><td>(500)</td></tr>
+          <tr><td><strong>Free Cash Flow</strong></td><td>1,122</td><td>(520)</td><td>(166)</td><td>592</td><td>768</td></tr>
+          <tr><td>Dividends Paid</td><td>(671)</td><td>(582)</td><td>(415)</td><td>(281)</td><td>(297)</td></tr>
+          <tr><td>Share Buybacks</td><td>(952)</td><td>(354)</td><td>(996)</td><td>0</td><td>0</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="tab-content" id="tab-ratios">
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Metric</th><th>2021A</th><th>2022A</th><th>2023A</th><th>2024A</th><th>2025CL</th><th>2026CL</th><th>2027CL</th></tr></thead>
+        <tbody>
+          <tr><td>Revenue Growth %</td><td>(20.1)</td><td>112.3</td><td>33.9</td><td>(9.2)</td><td>(8.3)</td><td>0.2</td><td>0.5</td></tr>
+          <tr><td>EBITDA Margin %</td><td>4.9</td><td>27.3</td><td>24.2</td><td>24.0</td><td>27.1</td><td>26.1</td><td>25.1</td></tr>
+          <tr><td>EBIT Margin %</td><td>(36.7)</td><td>6.8</td><td>9.9</td><td>7.8</td><td>9.2</td><td>9.0</td><td>8.7</td></tr>
+          <tr><td>Net Margin %</td><td>52.5*</td><td>3.9</td><td>12.2</td><td>9.6</td><td>7.1</td><td>7.5</td><td>8.1</td></tr>
+          <tr><td>ROE %</td><td>23.2</td><td>3.5</td><td>15.9</td><td>13.3</td><td>10.6</td><td>12.0</td><td>12.3</td></tr>
+          <tr><td>ROIC %</td><td>(19.6)</td><td>6.0</td><td>12.3</td><td>9.0</td><td>7.4</td><td>7.1</td><td>7.1</td></tr>
+          <tr><td>Net Debt/Equity %</td><td>(12.0)</td><td>(14.2)</td><td>(12.0)</td><td>14.2</td><td>49.8</td><td>37.9</td><td>23.8</td></tr>
+          <tr><td>Capex/Sales %</td><td>-</td><td>-</td><td>8.3</td><td>14.8</td><td>7.6</td><td>7.0</td><td>7.0</td></tr>
+          <tr><td>Div Payout %</td><td>90.5</td><td>88.7</td><td>55.8</td><td>22.3</td><td>55.8</td><td>55.8</td><td>55.8</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:.7rem;color:var(--muted);margin-top:.5rem">*2021 net margin inflated by one-off Siam Future divestiture gain.</p>
+  </div>
+
+  <div class="grid-2 reveal" style="margin-top:2rem">
+    <div class="chart-wrap">
+      <h3>Revenue & EBITDA Margin Trend</h3>
+      <canvas id="revenueChart" height="220"></canvas>
+    </div>
+    <div class="chart-wrap">
+      <h3>Profitability Trend (THB M)</h3>
+      <canvas id="profitChart" height="220"></canvas>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== CAPITAL STRUCTURE ===== -->
+<div class="divider"></div>
+<section id="capital">
+<div class="container">
+  <div class="section-label">Capital Structure</div>
+  <div class="section-title">Balance Sheet & Shareholder Returns</div>
+  <p class="section-sub">Major maintains a conservative balance sheet (Net D/E 1.06x vs 1.50x covenant) while aggressively returning capital via buybacks and dividends. Over 20% of shares retired in 4 years.</p>
+
+  <div class="gauge-row reveal">
+    <div class="gauge-card">
+      <div class="gauge-label">Net Debt/Equity</div>
+      <div class="gauge-value" style="color:var(--accent3)">1.06x</div>
+      <div class="gauge-sub">Covenant limit: 1.50x</div>
+    </div>
+    <div class="gauge-card">
+      <div class="gauge-label">Undrawn Facilities</div>
+      <div class="gauge-value">THB 4.2B</div>
+      <div class="gauge-sub">Massive liquidity buffer</div>
+    </div>
+    <div class="gauge-card">
+      <div class="gauge-label">Dividend Yield</div>
+      <div class="gauge-value" style="color:var(--accent)">3.4%</div>
+      <div class="gauge-sub">THB 0.25/share (FY25)</div>
+    </div>
+    <div class="gauge-card">
+      <div class="gauge-label">FCFF Yield (2026E)</div>
+      <div class="gauge-value" style="color:var(--accent3)">18.9%</div>
+      <div class="gauge-sub">Robust cash generation</div>
+    </div>
+  </div>
+
+  <div class="grid-2 reveal" style="margin-top:1.5rem">
+    <div class="card" style="padding:1.5rem">
+      <h3 style="font-size:1rem;font-weight:700;color:var(--white);margin-bottom:1rem">Debt Maturity Profile</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Instrument</th><th>Amount</th><th>Rate</th><th>Maturity</th></tr></thead>
+          <tbody>
+            <tr><td>Short-term Bills/Notes</td><td>THB 700M</td><td>2.03-4.53%</td><td>&lt;1 Year</td></tr>
+            <tr><td>Long-term Bank Loan</td><td>THB 1,000M</td><td>THOR +1.75%</td><td>Sep 2029</td></tr>
+            <tr><td>Corporate Debenture</td><td>THB 1,000M</td><td>4.25% Fixed</td><td>Sep 2027</td></tr>
+            <tr><td style="color:var(--accent)">New Debenture (Approved)</td><td>Up to THB 1,000M</td><td>TBD</td><td>&le;5 Years</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card" style="padding:1.5rem">
+      <h3 style="font-size:1rem;font-weight:700;color:var(--white);margin-bottom:1rem">Share Buyback History</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Program</th><th>Period</th><th>Shares</th><th>Value</th></tr></thead>
+          <tbody>
+            <tr><td>Buyback #3</td><td>Jul 2024 - Jan 2025</td><td>71.2M (8.6%)</td><td>THB 998M</td></tr>
+            <tr><td style="color:var(--accent)">Buyback #4 (Active)</td><td>Nov 2025 - May 2026</td><td>Up to 75.7M (9.99%)</td><td>THB 600M</td></tr>
+            <tr><td><strong>Cumulative Reduction</strong></td><td>2022-2026E</td><td><strong>200.1M shares</strong></td><td><strong>22.4% retired</strong></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem">Family ownership rises from 39.7% to 51.1% without deploying additional capital. Float reduced from 540M to ~340M shares. Sell-side analysts still model 760M shares in 2026 &mdash; a significant underestimate.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== VALUATION ===== -->
+<div class="divider"></div>
+<section id="valuation">
+<div class="container">
+  <div class="section-label">Valuation</div>
+  <div class="section-title">Is Major Cineplex Cheap?</div>
+  <p class="section-sub">At 7.1x P/E and 0.7x P/S, Major trades at a steep discount to its own history (avg 19x P/E pre-COVID) and global peers (avg 18.7x P/E). The question is whether this discount is justified by structural risks or represents mispricing.</p>
+
+  <div class="grid-3 reveal">
+    <div class="card" style="text-align:center;padding:1.5rem">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Current P/E</div>
+      <div style="font-size:2.5rem;font-weight:900;color:var(--accent)">7.1x</div>
+      <div style="font-size:.8rem;color:var(--muted)">vs 19x pre-COVID average</div>
+      <div style="font-size:.72rem;color:var(--accent3);margin-top:.3rem">63% discount to history</div>
+    </div>
+    <div class="card" style="text-align:center;padding:1.5rem">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Price / Book</div>
+      <div style="font-size:2.5rem;font-weight:900;color:var(--accent2)">~1.0x</div>
+      <div style="font-size:.8rem;color:var(--muted)">vs 3x pre-COVID average</div>
+      <div style="font-size:.72rem;color:var(--accent3);margin-top:.3rem">Near book value</div>
+    </div>
+    <div class="card" style="text-align:center;padding:1.5rem">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Price / Sales</div>
+      <div style="font-size:2.5rem;font-weight:900;color:var(--accent3)">0.7x</div>
+      <div style="font-size:.8rem;color:var(--muted)">Lower than GFC trough</div>
+      <div style="font-size:.72rem;color:var(--accent3);margin-top:.3rem">Margin recovery = leverage</div>
+    </div>
+  </div>
+
+  <div class="reveal" style="margin-top:2rem">
+    <div class="chart-wrap">
+      <h3>Global Cinema Peer Valuation Comparison</h3>
+      <canvas id="peerChart" height="140"></canvas>
+    </div>
+  </div>
+
+  <div class="grid-2 reveal" style="margin-top:1.5rem">
+    <div class="chart-wrap">
+      <h3>Historical Forward P/E Band</h3>
+      <canvas id="peHistorical" height="200"></canvas>
+    </div>
+    <div class="card" style="padding:1.5rem">
+      <h3 style="font-size:1rem;font-weight:700;color:var(--white);margin-bottom:1rem">Precedent M&A Transactions</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Target</th><th>Acquirer</th><th>Value</th><th>EV/EBITDA</th></tr></thead>
+          <tbody>
+            <tr><td>Regal Entertainment</td><td>Cineworld</td><td>$5.9B</td><td>11.0x</td></tr>
+            <tr><td>AMC Entertainment</td><td>Dalian Wanda</td><td>$4.5B</td><td>N/A</td></tr>
+            <tr><td>Cineplex Inc</td><td>Cineworld</td><td>$3.1B</td><td>11.0x</td></tr>
+            <tr><td>Vue Entertainment</td><td>OMERS/Alberta</td><td>$1.4B</td><td>N/A</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="font-size:.72rem;color:var(--muted);margin-top:.5rem">Global cinema M&A has historically commanded ~11x EV/EBITDA during consolidation. Major's current EV/EBITDA of ~5x sits at -2 standard deviations from its own LT average of 8.3x.</p>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== BULL vs BEAR ===== -->
+<div class="divider"></div>
+<section id="bullbear">
+<div class="container">
+  <div class="section-label">Investment Debate</div>
+  <div class="section-title">Bull Case vs Bear Case</div>
+  <p class="section-sub">Sentiment is sharply divided. Is this a deeply discounted value play with strong capital returns, or a value trap facing structural industry decline?</p>
+
+  <div class="bull-bear reveal">
+    <div class="bull-col">
+      <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:1.25rem">The Bull Case</h3>
+      <div class="bb-item">
+        <h4>Local Content Renaissance</h4>
+        <p>Thai films captured 62% of box office in 2024. M Studio is Thailand's #1 producer. 69 Thai films slated for 2026 (vs 55 in 2025). This insulates from Hollywood volatility and taps growing provincial demand.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Extreme Valuation Discount</h4>
+        <p>7.1x P/E is -2 standard deviations from historical average (19x). Below COVID-era pricing. Global peers average 18.7x. P/B at ~1.0x vs historical 3.0x. P/S at 0.7x &mdash; lower than during the GFC.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Aggressive Capital Returns</h4>
+        <p>THB 600M active buyback retiring up to 9.99% of shares. Over 20% cumulative shares cancelled since 2022. 3.4% dividend yield. FCFF yield of 18.9%. Krungsri models 11% target price upside from buyback alone.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Margin Expansion Story</h4>
+        <p>EBITDA margin expanded to 29%. Q4 2025 net profit surged 175% QoQ and beat consensus by 16-37%. Cost controls: automation, returning underutilized spaces, eliminating low-margin promos, optimizing raw material costs.</p>
+      </div>
+      <div class="bb-item">
+        <h4>FMCG Diversification</h4>
+        <p>TKN popcorn JV creates an asset-light, scalable revenue stream outside of cinema. 14,000+ retail touchpoints. THB 200M first-year target. Reduces box office dependence structurally.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Hollywood Slate Strengthening</h4>
+        <p>2026 features Avengers, Spider-Man, Toy Story 5, Dune, Super Mario. Universal extending theatrical windows from 18 to 35 days (45 by 2027). Paramount's $81B WBD acquisition signals Hollywood isn't dead.</p>
+      </div>
+    </div>
+    <div class="bear-col">
+      <h3 style="font-size:1.1rem;font-weight:800;margin-bottom:1.25rem">The Bear Case</h3>
+      <div class="bb-item">
+        <h4>Secular Streaming Disruption</h4>
+        <p>Post-COVID, viewer behavior permanently shifted. Netflix Thailand: 2.1M subscribers, THB 2.1B revenue. Consumers wait for films on streaming rather than paying for theater tickets. Bangkok attendance structurally declining.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Macro Headwinds</h4>
+        <p>High Thai household debt and weak consumer confidence restrict discretionary spending. GDP growth outlook tepid. Advertising clients cutting budgets &mdash; ad revenue fell 19% YoY. Cinema is one of the first budget items consumers cut.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Revenue Sensitivity is Extreme</h4>
+        <p>1-3% decline in ticket revenue triggers 5-7% concession drop and 11-13% advertising decline. The high operating leverage that helps on the upside absolutely crushes on the downside.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Hollywood Slate Unpredictability</h4>
+        <p>Captain America: Brave New World and Snow White both massively underperformed. Despite strong titles on paper, actual performance is impossible to predict. Local Thai film success is equally hard to forecast consistently.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Guest Counts May Never Recover</h4>
+        <p>CLSA argues cinema attendance has secularly declined. Revenue peaked at THB 11B in 2019 &mdash; still 30%+ below that level. Even with cost discipline, there may be a structural ceiling to recovery.</p>
+      </div>
+      <div class="bb-item">
+        <h4>Tariff Risks</h4>
+        <p>Proposed 100% US tariffs on foreign-produced films could increase licensing costs for Thai operators. US studios might delay international productions or face retaliatory measures.</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== RISKS ===== -->
+<div class="divider"></div>
+<section id="risks">
+<div class="container">
+  <div class="section-label">Risk Framework</div>
+  <div class="section-title">Key Risk & Sensitivity Analysis</div>
+  <p class="section-sub">Understanding the cascading revenue sensitivity is critical. Box office is the kingpin &mdash; when tickets fall, everything else falls harder.</p>
+
+  <div class="sens-grid reveal">
+    <div class="sens-card">
+      <div class="trigger">Ticket Revenue -1% to -3%</div>
+      <div class="impact neg">&darr; Concessions -5% to -7%</div>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.3rem">Direct correlation &mdash; fewer guests = fewer popcorn buyers</p>
+    </div>
+    <div class="sens-card">
+      <div class="trigger">Ticket Revenue -1% to -3%</div>
+      <div class="impact neg">&darr; Advertising -11% to -13%</div>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.3rem">Advertisers pay for eyeballs &mdash; lower attendance = less ad value</p>
+    </div>
+    <div class="sens-card">
+      <div class="trigger">Thesis-Breaking Scenario</div>
+      <div class="impact neg">Permanent Streaming Shift</div>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.3rem">If audiences permanently migrate to home platforms, high-margin popcorn and ad sales are destroyed</p>
+    </div>
+  </div>
+
+  <div class="grid-2 reveal" style="margin-top:1.5rem">
+    <div class="card" style="padding:1.5rem">
+      <h3 style="font-size:1rem;font-weight:700;color:var(--white);margin-bottom:1rem">Key Risks</h3>
+      <div style="font-size:.82rem;color:var(--muted)">
+        <p style="margin-bottom:.75rem"><strong style="color:var(--red)">1. Streaming cannibalization:</strong> Permanent shift to home viewing reduces theatrical attendance structurally.</p>
+        <p style="margin-bottom:.75rem"><strong style="color:var(--red)">2. Macro weakness:</strong> High household debt + weak confidence = less discretionary spending on entertainment.</p>
+        <p style="margin-bottom:.75rem"><strong style="color:var(--red)">3. Content dependency:</strong> Both Hollywood and Thai film success are inherently unpredictable. One bad quarter of films devastates results.</p>
+        <p style="margin-bottom:.75rem"><strong style="color:var(--red)">4. Ad revenue structural decline:</strong> Corporate ad budgets shifting digital. Cinema advertising is an early cut in downturns.</p>
+        <p style="margin-bottom:.75rem"><strong style="color:var(--red)">5. Geopolitical:</strong> Thailand-Cambodia tensions, US tariff threats on foreign-produced films.</p>
+        <p><strong style="color:var(--red)">6. Family governance risk:</strong> Poolvaraluck family controls 51%+ after buybacks, concentrated decision-making.</p>
+      </div>
+    </div>
+    <div class="card" style="padding:1.5rem">
+      <h3 style="font-size:1rem;font-weight:700;color:var(--white);margin-bottom:1rem">Key Catalysts to Watch</h3>
+      <div style="font-size:.82rem;color:var(--muted)">
+        <p style="margin-bottom:.75rem"><strong style="color:var(--accent3)">1. 2026 box office data:</strong> Q1 2026 is tracking 50%+ better YoY. Monitor weekly admissions to validate recovery.</p>
+        <p style="margin-bottom:.75rem"><strong style="color:var(--accent3)">2. TKN popcorn JV revenue:</strong> Watch for THB 200M first-year milestone. Proof of concept for FMCG diversification.</p>
+        <p style="margin-bottom:.75rem"><strong style="color:var(--accent3)">3. Margin sustainability:</strong> Can Q4 2025 margins (12.5% operating) be maintained? SG&A-to-sales of 27.3% is a key metric.</p>
+        <p style="margin-bottom:.75rem"><strong style="color:var(--accent3)">4. Share count:</strong> Analysts model 760M shares for 2026. Actual will be ~695M. EPS revision when they update = catalyst.</p>
+        <p style="margin-bottom:.75rem"><strong style="color:var(--accent3)">5. Thai film success:</strong> 69 Thai films in 2026. Monitor Death Whisperer franchise and other M Studio titles.</p>
+        <p><strong style="color:var(--accent3)">6. Hollywood theatrical windows:</strong> Universal extending to 35-45 days. Other studios following?</p>
+      </div>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== ANALYST CONSENSUS ===== -->
+<div class="divider"></div>
+<section id="analysts">
+<div class="container">
+  <div class="section-label">Sell-Side</div>
+  <div class="section-title">Analyst Consensus & Target Prices</div>
+  <p class="section-sub">Consensus is split: 3 Buys / 1 Underperform. Average target price implies ~15% upside. Note: all analysts still model ~760M shares for 2026 &mdash; the actual count will be ~695M, which means EPS estimates will need upward revision.</p>
+
+  <div class="analyst-grid reveal">
+    <div class="analyst-card">
+      <div class="broker">CLSA</div>
+      <div class="rating rating-sell">Underperform</div>
+      <div class="tp">THB 6.50</div>
+      <div class="method">SOTP/DCF | WACC 8.98%<br>Terminal 5.2x EV/EBITDA (-2SD)</div>
+    </div>
+    <div class="analyst-card">
+      <div class="broker">Krungsri Securities</div>
+      <div class="rating rating-buy">Buy</div>
+      <div class="tp">THB 9.10</div>
+      <div class="method">DCF | WACC 8.4%<br>11x Forward P/E</div>
+    </div>
+    <div class="analyst-card">
+      <div class="broker">KGI Securities</div>
+      <div class="rating rating-op">Outperform</div>
+      <div class="tp">THB 9.70</div>
+      <div class="method">11x Target P/E<br>(-1SD historical avg)</div>
+    </div>
+    <div class="analyst-card">
+      <div class="broker">Yuanta Securities</div>
+      <div class="rating rating-buy">Buy</div>
+      <div class="tp">THB 11.00</div>
+      <div class="method">DCF | WACC 8.2%<br>2.5% Terminal Growth</div>
+    </div>
+  </div>
+
+  <div class="reveal" style="margin-top:1.5rem">
+    <div class="chart-wrap">
+      <h3>Target Price Spread vs Current Price (THB)</h3>
+      <canvas id="targetChart" height="120"></canvas>
+    </div>
+  </div>
+</div>
+</section>
+
+<!-- ===== QUALITY SCORECARD ===== -->
+<div class="divider"></div>
+<section id="quality">
+<div class="container">
+  <div class="section-label">Quality Assessment</div>
+  <div class="section-title">Business Quality Scorecard</div>
+  <p class="section-sub">Evaluated across 4 quality dimensions. Major Cineplex scores "Above Average" at 10.5/16 (65.6%), with a strong moat and operating leverage offset by weak recurring revenue predictability.</p>
+
+  <div class="score-grid reveal">
+    <div class="score-item">
+      <div class="s-score" style="color:var(--accent3)">3.0<span style="font-size:.8rem;color:var(--muted)">/4</span></div>
+      <div class="s-label">Infrastructure Moat</div>
+      <div class="s-grade" style="background:rgba(16,185,129,.15);color:var(--accent3)">Strong</div>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.4rem">70% market share, 77-province coverage, IMAX exclusivity, building ownership</p>
+    </div>
+    <div class="score-item">
+      <div class="s-score" style="color:var(--red)">1.5<span style="font-size:.8rem;color:var(--muted)">/4</span></div>
+      <div class="s-label">Recurring Revenue</div>
+      <div class="s-grade" style="background:rgba(239,68,68,.15);color:var(--red)">Weak</div>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.4rem">Highly discretionary. Dependent on unpredictable film slates. M Pass and FMCG too small to offset.</p>
+    </div>
+    <div class="score-item">
+      <div class="s-score" style="color:var(--accent3)">3.0<span style="font-size:.8rem;color:var(--muted)">/4</span></div>
+      <div class="s-label">Operating Leverage</div>
+      <div class="s-grade" style="background:rgba(16,185,129,.15);color:var(--accent3)">Strong</div>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.4rem">GM expanding 37.5% to 39.5%. Aggressive branch closures. Less revenue needed to drive profitability.</p>
+    </div>
+    <div class="score-item">
+      <div class="s-score" style="color:var(--accent3)">3.0<span style="font-size:.8rem;color:var(--muted)">/4</span></div>
+      <div class="s-label">Catalyst / Transform</div>
+      <div class="s-grade" style="background:rgba(16,185,129,.15);color:var(--accent3)">Strong</div>
+      <p style="font-size:.7rem;color:var(--muted);margin-top:.4rem">Cambodia exit, TKN JV, local content pivot, buybacks. Clear milestones for re-rating.</p>
+    </div>
+  </div>
+
+  <div class="reveal" style="margin-top:2rem;text-align:center">
+    <div class="card" style="display:inline-block;padding:1.5rem 3rem">
+      <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Composite Quality Score</div>
+      <div style="font-size:3rem;font-weight:900;color:var(--accent);margin:.3rem 0">10.5 / 16</div>
+      <div style="font-size:.9rem;color:var(--white);font-weight:600">Above Average (65.6%)</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-top:.35rem">Conviction: Medium | Upgrade trigger: FMCG JV hits THB 200M target + Thai content sustains 50% share</div>
+    </div>
+  </div>
+</div>
+</section>
+
+<div class="divider"></div>
+<footer style="padding:2rem 0;text-align:center;color:var(--muted);font-size:.72rem">
+  <div class="container">
+    <p>Major Cineplex Group PLC (MAJOR TB) Research Dashboard | Data sourced from company filings, CLSA, Krungsri Securities, KGI Securities, Yuanta Securities, Jefferies, and AlphaSense.</p>
+    <p style="margin-top:.35rem">This dashboard is for informational purposes only and does not constitute investment advice. All data as of April 2026.</p>
+  </div>
+</footer>
+
+<!-- ===== SCRIPTS ===== -->
+<script>
+// ===== TRADINGVIEW WIDGET =====
+(function(){
+  const s=document.createElement('script');
+  s.src='https://s3.tradingview.com/tv.js';
+  s.onload=function(){
+    new TradingView.widget({
+      autosize:true,container_id:'tradingview_widget',
+      symbol:'SET:MAJOR',interval:'D',timezone:'Asia/Bangkok',
+      theme:'dark',style:'1',locale:'en',
+      toolbar_bg:'#111827',enable_publishing:false,
+      hide_top_toolbar:false,hide_legend:false,
+      save_image:false,backgroundColor:'#1a2236',
+      gridColor:'rgba(42,53,83,0.3)',
+      studies:['MASimple@tv-basicstudies','Volume@tv-basicstudies']
+    });
+  };
+  document.head.appendChild(s);
+})();
+
+// ===== CHART.JS DEFAULTS =====
+Chart.defaults.color='#94a3b8';
+Chart.defaults.borderColor='rgba(42,53,83,0.5)';
+Chart.defaults.font.family="'Segoe UI',system-ui,sans-serif";
+Chart.defaults.font.size=11;
+Chart.defaults.plugins.legend.labels.usePointStyle=true;
+Chart.defaults.plugins.legend.labels.pointStyle='circle';
+
+// ===== PENETRATION CHART =====
+new Chart(document.getElementById('penetrationChart'),{
+  type:'bar',
+  data:{
+    labels:['USA','South Korea','Japan','UK','Australia','Malaysia','China','Indonesia','Thailand','India'],
+    datasets:[{
+      label:'Population per Screen',
+      data:[8400,16000,22000,25000,28000,35000,42000,50000,58000,95000],
+      backgroundColor:function(ctx){return ctx.dataIndex===8?'#f59e0b':'rgba(59,130,246,0.5)'},
+      borderRadius:6,barPercentage:0.7
+    }]
+  },
+  options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:function(c){return c.raw.toLocaleString()+' people per screen'}}}},
+    scales:{x:{grid:{display:false},ticks:{callback:function(v){return (v/1000)+'K'}}},y:{grid:{display:false}}}}
+});
+
+// ===== THAI VS HOLLYWOOD =====
+new Chart(document.getElementById('thaiVsHollywood'),{
+  type:'bar',
+  data:{
+    labels:['2019','2020','2021','2022','2023','2024'],
+    datasets:[
+      {label:'Thai Films %',data:[35,30,25,40,55,62],backgroundColor:'#f59e0b',borderRadius:4,barPercentage:0.6},
+      {label:'Hollywood %',data:[65,70,75,60,45,38],backgroundColor:'rgba(59,130,246,0.5)',borderRadius:4,barPercentage:0.6}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,max:100,ticks:{callback:function(v){return v+'%'}}}}}
+});
+
+// ===== THAI FILM SUPPLY =====
+new Chart(document.getElementById('thaiFilmSupply'),{
+  type:'bar',
+  data:{
+    labels:['2019','2020','2021','2022','2023','2024','2025','2026E'],
+    datasets:[{
+      label:'# of Thai Films Released',
+      data:[44,27,17,45,52,56,55,69],
+      backgroundColor:function(ctx){return ctx.dataIndex===7?'#f59e0b':'rgba(245,158,11,0.4)'},
+      borderRadius:6,barPercentage:0.65
+    }]
+  },
+  options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}
+});
+
+// ===== REVENUE SEGMENT =====
+new Chart(document.getElementById('revSegment'),{
+  type:'doughnut',
+  data:{
+    labels:['Admissions (50%)','Concessions (26%)','Advertising (13%)','Other (11%)'],
+    datasets:[{data:[50,26,13,11],backgroundColor:['#f59e0b','#3b82f6','#10b981','#6366f1'],borderWidth:0,hoverOffset:8}]
+  },
+  options:{responsive:true,cutout:'60%',plugins:{legend:{position:'bottom',labels:{padding:12}}}}
+});
+
+// ===== PROFIT SEGMENT =====
+new Chart(document.getElementById('profitSegment'),{
+  type:'doughnut',
+  data:{
+    labels:['Concessions (43%)','Advertising (30%)','Admissions (19%)','Other (8%)'],
+    datasets:[{data:[43,30,19,8],backgroundColor:['#3b82f6','#10b981','#f59e0b','#6366f1'],borderWidth:0,hoverOffset:8}]
+  },
+  options:{responsive:true,cutout:'60%',plugins:{legend:{position:'bottom',labels:{padding:12}}}}
+});
+
+// ===== MARKET SHARE =====
+new Chart(document.getElementById('marketShareChart'),{
+  type:'bar',
+  data:{
+    labels:['Major Cineplex','SF Corporation'],
+    datasets:[
+      {label:'Branches',data:[187,65],backgroundColor:'#f59e0b',borderRadius:6,barPercentage:0.5},
+      {label:'Screens',data:[863,395],backgroundColor:'#3b82f6',borderRadius:6,barPercentage:0.5}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}
+});
+
+// ===== GUEST BREAKDOWN =====
+new Chart(document.getElementById('guestBreakdown'),{
+  type:'bar',
+  data:{
+    labels:['2016','2017','2018','2019','2020','2021','2022','2023','2024'],
+    datasets:[
+      {label:'Bangkok & Vicinity',data:[21,19,20,18,6,5,9,13,12],backgroundColor:'#3b82f6',borderRadius:4,barPercentage:0.7},
+      {label:'Upcountry',data:[12,14,19,19,4,3,9,12,14],backgroundColor:'#f59e0b',borderRadius:4,barPercentage:0.7},
+      {label:'M Pass Members',data:[0,0,2,2,0.5,0.5,1,2,2],backgroundColor:'#10b981',borderRadius:4,barPercentage:0.7}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Million guests'}}}}
+});
+
+// ===== TICKET SALES =====
+new Chart(document.getElementById('ticketChart'),{
+  type:'bar',
+  data:{
+    labels:['2018','2019','2020','2021','2022','2023','2024','2025','2026E'],
+    datasets:[{
+      label:'Ticket Sales (M)',
+      data:[35,35,5,5,18,25,25,28,34],
+      backgroundColor:function(ctx){return ctx.dataIndex>=7?'rgba(245,158,11,0.8)':'rgba(59,130,246,0.5)'},
+      borderRadius:6,barPercentage:0.65
+    }]
+  },
+  options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,title:{display:true,text:'Millions'}}}}
+});
+
+// ===== SHARE COUNT =====
+new Chart(document.getElementById('shareCount'),{
+  type:'bar',
+  data:{
+    labels:['2022','2023','2024','2025E','2026E'],
+    datasets:[
+      {label:'Family (Poolvaraluck)',data:[355,355,355,355,355],backgroundColor:'#f59e0b',borderRadius:4,barPercentage:0.7},
+      {label:'Free Float',data:[540,500,457,400,340],backgroundColor:'rgba(59,130,246,0.5)',borderRadius:4,barPercentage:0.7}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{stacked:true,grid:{display:false}},y:{stacked:true,title:{display:true,text:'Million shares'}}}}
+});
+
+// ===== REVENUE & MARGIN =====
+new Chart(document.getElementById('revenueChart'),{
+  type:'bar',
+  data:{
+    labels:['2019','2020','2021','2022','2023','2024','2025CL','2026CL'],
+    datasets:[
+      {label:'Revenue (THB B)',data:[10.8,4.5,3.0,6.4,8.6,7.8,7.1,7.1],backgroundColor:'rgba(59,130,246,0.5)',borderRadius:6,barPercentage:0.6,yAxisID:'y'},
+      {label:'EBITDA Margin %',data:[24,5,5,27,24,24,27,26],type:'line',borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.1)',pointBackgroundColor:'#f59e0b',tension:0.4,fill:true,yAxisID:'y1'}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{grid:{display:false}},y:{beginAtZero:true,title:{display:true,text:'THB Billion'}},y1:{position:'right',min:0,max:35,ticks:{callback:function(v){return v+'%'}},grid:{display:false}}}}
+});
+
+// ===== PROFITABILITY =====
+new Chart(document.getElementById('profitChart'),{
+  type:'line',
+  data:{
+    labels:['2021','2022','2023','2024','2025CL','2026CL','2027CL'],
+    datasets:[
+      {label:'EBITDA',data:[146,1747,2070,1861,1928,1862,1799],borderColor:'#f59e0b',backgroundColor:'rgba(245,158,11,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#f59e0b'},
+      {label:'EBIT',data:[-1104,435,850,608,655,639,621],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.05)',tension:0.4,fill:true,pointBackgroundColor:'#3b82f6'},
+      {label:'Net Profit',data:[1581,252,1042,744,504,532,579],borderColor:'#10b981',backgroundColor:'rgba(16,185,129,0.05)',tension:0.4,fill:true,pointBackgroundColor:'#10b981'}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top'},tooltip:{callbacks:{label:function(c){return c.dataset.label+': THB '+c.raw.toLocaleString()+'M'}}}},scales:{x:{grid:{display:false}},y:{title:{display:true,text:'THB Millions'}}}}
+});
+
+// ===== PEER VALUATION =====
+new Chart(document.getElementById('peerChart'),{
+  type:'bar',
+  data:{
+    labels:['Major Cineplex','Nusantara (CNMA)','Cinemark (CNK)','AMC','IMAX','Wanda Film','PVR INOX','Global Avg'],
+    datasets:[
+      {label:'P/E 2026F',data:[10.6,13.3,11.7,14.1,22.4,20.9,35.7,18.7],backgroundColor:function(ctx){return ctx.dataIndex===0?'#f59e0b':ctx.dataIndex===7?'rgba(239,68,68,0.5)':'rgba(59,130,246,0.4)'},borderRadius:6,barPercentage:0.6},
+      {label:'ROE 2025 %',data:[11,14,30,34,20,11,-4,18],backgroundColor:function(ctx){return ctx.dataIndex===0?'rgba(245,158,11,0.4)':'rgba(16,185,129,0.3)'},borderRadius:6,barPercentage:0.6}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{grid:{display:false}},y:{beginAtZero:true}}}
+});
+
+// ===== P/E HISTORICAL =====
+new Chart(document.getElementById('peHistorical'),{
+  type:'line',
+  data:{
+    labels:['2010','2011','2012','2013','2014','2015','2016','2017','2018','2019','2020','2021','2022','2023','2024','2025','2026'],
+    datasets:[
+      {label:'+1SD (22.6x)',data:Array(17).fill(22.6),borderColor:'rgba(239,68,68,0.4)',borderDash:[5,5],pointRadius:0,borderWidth:1},
+      {label:'Avg (18.3x)',data:Array(17).fill(18.3),borderColor:'rgba(245,158,11,0.5)',borderDash:[5,5],pointRadius:0,borderWidth:1},
+      {label:'-1SD (14.1x)',data:Array(17).fill(14.1),borderColor:'rgba(16,185,129,0.4)',borderDash:[5,5],pointRadius:0,borderWidth:1},
+      {label:'Forward P/E',data:[15,12,18,22,24,26,20,18,16,19,null,null,8,7,9,13,7],borderColor:'#3b82f6',backgroundColor:'rgba(59,130,246,0.1)',tension:0.3,fill:true,pointBackgroundColor:'#3b82f6',spanGaps:true}
+    ]
+  },
+  options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{grid:{display:false}},y:{min:0,max:30,title:{display:true,text:'Forward P/E (x)'}}}}
+});
+
+// ===== TARGET PRICE CHART =====
+new Chart(document.getElementById('targetChart'),{
+  type:'bar',
+  data:{
+    labels:['CLSA (U-PF)','Krungsri (Buy)','KGI (Outperf)','Yuanta (Buy)','Current Price'],
+    datasets:[{
+      label:'THB',
+      data:[6.5,9.1,9.7,11.0,7.8],
+      backgroundColor:['rgba(239,68,68,0.6)','rgba(16,185,129,0.6)','rgba(59,130,246,0.6)','rgba(16,185,129,0.6)','rgba(245,158,11,0.8)'],
+      borderRadius:6,barPercentage:0.55
+    }]
+  },
+  options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{min:0,max:13,title:{display:true,text:'THB per share'}},y:{grid:{display:false}}}}
+});
+
+// ===== ANIMATED COUNTERS =====
+function animateCounters(){
+  document.querySelectorAll('[data-target]').forEach(function(el){
+    const target=parseInt(el.getAttribute('data-target'));
+    const prefix=el.getAttribute('data-prefix')||'';
+    const suffix=el.getAttribute('data-suffix')||'';
+    let current=0;
+    const increment=target/60;
+    const timer=setInterval(function(){
+      current+=increment;
+      if(current>=target){current=target;clearInterval(timer)}
+      el.textContent=prefix+Math.floor(current).toLocaleString()+suffix;
+    },25);
+  });
+}
+
+// ===== SCROLL REVEAL =====
+function handleReveal(){
+  document.querySelectorAll('.reveal').forEach(function(el){
+    const rect=el.getBoundingClientRect();
+    if(rect.top<window.innerHeight-80){el.classList.add('visible')}
+  });
+}
+
+// ===== TAB SWITCHING =====
+document.querySelectorAll('.tab-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active')});
+    document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active')});
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.getAttribute('data-tab')).classList.add('active');
+  });
+});
+
+// ===== NAV ACTIVE STATE =====
+window.addEventListener('scroll',function(){
+  const sections=document.querySelectorAll('section[id]');
+  let current='';
+  sections.forEach(function(s){
+    if(window.scrollY>=s.offsetTop-200){current=s.getAttribute('id')}
+  });
+  document.querySelectorAll('.nav-links a').forEach(function(a){
+    a.classList.toggle('active',a.getAttribute('href')==='#'+current);
+  });
+  handleReveal();
+});
+
+// Init
+animateCounters();
+handleReveal();
+</script>
+</body>
+</html>
